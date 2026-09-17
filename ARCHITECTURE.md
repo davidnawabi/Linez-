@@ -187,13 +187,16 @@ writing code. Reasonable defaults were chosen so a working Phase 1 scaffold
 could ship immediately; flagging them explicitly rather than silently
 deciding:
 
-1. **Launch city?** Set to Boston, MA. `supabase/seed.sql` now seeds nine
-   real, currently-operating venues (Fenway/Lansdowne St and the North
-   End/Back Bay) with real addresses, researched via web search. Still
-   not launch-ready: coordinates are approximate (derived from street
-   addresses, not surveyed), hours/cover charges are illustrative and
-   unconfirmed, and none of these venues have actually agreed to be in
-   the app -- real venue partnerships (required for Fast Pass in
+1. **Launch city?** Set to New York, NY (changed from an earlier Boston
+   default -- NYC was judged the more realistic launch market).
+   `supabase/seed.sql` now seeds nine real, currently-operating venues
+   (Lower East Side/East Village bars and clubs, plus Manhattan/Brooklyn
+   restaurants actually known for real walk-in waits -- Carbone, Via
+   Carota, Peter Luger) with real addresses, researched via web search.
+   Still not launch-ready: coordinates are approximate (derived from
+   street addresses, not surveyed), hours/cover charges are illustrative
+   and unconfirmed, and none of these venues have actually agreed to be
+   in the app -- real venue partnerships (required for Fast Pass in
    particular) are a business development step, not something a seed
    file can stand in for.
 2. **Budget for third-party services?** Supabase, Mapbox/Google Maps, Stripe
