@@ -148,6 +148,38 @@ every push/PR. Test suites are not built out yet (Phase 1 has none) — add
 Jest to `apps/api` first (pure functions: scoring, geofence math) since
 those are the highest-value/lowest-effort tests to add next.
 
+## What's actually been verified (not just typechecked)
+
+This scaffold has been run against real infrastructure, not just compiled:
+
+- Every migration (`0001`-`0003`) applied cleanly to a real local
+  Postgres 16 + PostGIS instance with no errors.
+- `is_within_geofence` (the server-side source of truth for report
+  submission) was tested against real coordinates: true when standing at
+  a venue, false 3,000 miles away, and false at ~222m from a venue (just
+  outside the ~152m/500ft radius) -- confirming the boundary is where the
+  code claims it is, not just that the function runs.
+- A full report submission was inserted end-to-end (report row +
+  `reporter_scores` upsert via `increment_reports_submitted`) and the
+  real `computeWeightedVenueStatus` function, run directly against that
+  data via a live Postgres connection, produced the expected crowd level,
+  wait estimate, and confidence score.
+- The mobile app's entry point had a real bug this verification caught:
+  Expo's default `main: node_modules/expo/AppEntry.js` doesn't resolve
+  under npm workspaces, since `expo` gets hoisted to the repo root's
+  `node_modules` instead of `apps/mobile/node_modules`. Fixed by using
+  `registerRootComponent` in `apps/mobile/index.ts` directly (Expo's
+  documented pattern for monorepos) instead of relying on the default
+  entry. Confirmed fixed by actually running `expo export` and getting a
+  bundle (795 modules resolved) instead of a `ConfigError`.
+
+What's still *not* verified, because it requires infrastructure only the
+project owner can provision (see "Open questions" below): a real Supabase
+project (this sandbox has no Docker, so `supabase start`'s full stack --
+PostgREST + GoTrue + Realtime together -- was never run; only the
+underlying Postgres+PostGIS layer was), and the app running on an actual
+device or simulator.
+
 ## Open questions for the product owner
 
 These were called out in the original brief as things to clarify before
@@ -155,9 +187,15 @@ writing code. Reasonable defaults were chosen so a working Phase 1 scaffold
 could ship immediately; flagging them explicitly rather than silently
 deciding:
 
-1. **Launch city?** Seed data in `supabase/seed.sql` uses placeholder
-   venues. Needs a real city + a real manually-curated venue list before
-   this is usable by actual users.
+1. **Launch city?** Set to Boston, MA. `supabase/seed.sql` now seeds nine
+   real, currently-operating venues (Fenway/Lansdowne St and the North
+   End/Back Bay) with real addresses, researched via web search. Still
+   not launch-ready: coordinates are approximate (derived from street
+   addresses, not surveyed), hours/cover charges are illustrative and
+   unconfirmed, and none of these venues have actually agreed to be in
+   the app -- real venue partnerships (required for Fast Pass in
+   particular) are a business development step, not something a seed
+   file can stand in for.
 2. **Budget for third-party services?** Supabase, Mapbox/Google Maps, Stripe
    Identity, Persona, Twilio (if SMS volume outgrows Supabase Auth's
    built-in provider) all have free tiers sufficient for Phase 1 testing,
