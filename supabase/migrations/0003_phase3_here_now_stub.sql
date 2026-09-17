@@ -1,0 +1,67 @@
+-- Phase 3: Here Now (venue-scoped social discovery)
+--
+-- NOT enabled in Phase 1 or 2. Left here, commented out, as a schema
+-- sketch. Do NOT uncomment and ship this without the Trust & Safety work
+-- described in ARCHITECTURE.md and the original brief -- age/ID
+-- verification, photo verification, moderation, and panic-exit must exist
+-- before any matching UX ships, not be retrofitted after.
+--
+-- Key safety-critical schema decisions baked in now so they aren't an
+-- afterthought later:
+--   - venue_presence.visible defaults to false and is session-scoped.
+--     There is no "default visible" state; a user must actively flip this
+--     to true each time, per venue, per session. Never write a migration
+--     that changes this default.
+--   - No table here stores a history of past presence visible to other
+--     users -- venue_presence rows should be deleted (not just marked
+--     invisible) once expired or once the user leaves the geofence, so
+--     "User A was at Venue X" can never be reconstructed by User B after
+--     User B has left. A hard delete (or a short-lived partition dropped
+--     on a schedule) is intentional here, not an oversight.
+--   - Restricting Here Now to bars/clubs (excluding restaurants) can be
+--     enforced with a check constraint against venues.category once this
+--     ships.
+
+-- create table venue_presence (
+--   user_id uuid not null references auth.users (id) on delete cascade,
+--   venue_id uuid not null references venues (id) on delete cascade,
+--   checked_in_at timestamptz not null default now(),
+--   expires_at timestamptz not null, -- min(geofence-exit, checked_in_at + 3h), enforced by the app/API, not just this column
+--   geofence_verified boolean not null default false,
+--   visible boolean not null default false, -- NEVER change this default
+--   primary key (user_id, venue_id)
+-- );
+--
+-- create table matches (
+--   id uuid primary key default gen_random_uuid(),
+--   user_a_id uuid not null references auth.users (id) on delete cascade,
+--   user_b_id uuid not null references auth.users (id) on delete cascade,
+--   venue_id uuid not null references venues (id) on delete cascade,
+--   matched_at timestamptz not null default now(),
+--   chat_expires_at timestamptz not null, -- e.g. end of night, to discourage becoming a general dating app
+--   check (user_a_id <> user_b_id)
+-- );
+--
+-- create type safety_report_status as enum ('pending', 'reviewed', 'actioned');
+--
+-- create table safety_reports (
+--   id uuid primary key default gen_random_uuid(),
+--   reporter_id uuid not null references auth.users (id) on delete cascade,
+--   reported_id uuid not null references auth.users (id) on delete cascade,
+--   venue_id uuid references venues (id) on delete set null,
+--   reason text not null,
+--   status safety_report_status not null default 'pending',
+--   created_at timestamptz not null default now(),
+--   reviewed_at timestamptz,
+--   reviewed_by uuid references auth.users (id)
+-- );
+--
+-- -- profiles.age_verification_status (added in 0001) becomes enforced here:
+-- -- the API should refuse to create a venue_presence row, or surface a user
+-- -- in another user's Here Now results, unless age_verification_status = 'verified'.
+-- create table age_verifications (
+--   user_id uuid primary key references auth.users (id) on delete cascade,
+--   verification_method text not null, -- e.g. 'persona', 'stripe_identity'
+--   verified_at timestamptz,
+--   external_verification_id text
+-- );
