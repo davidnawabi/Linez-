@@ -1,10 +1,10 @@
 # Linez — Nightlife Line Tracker
 
-Phase 1 of the nightlife super-app: crowdsourced, geofence-verified live wait
-times and crowd levels for bars, clubs, and restaurants. Fast Pass (Phase 2)
-and Here Now (Phase 3) are not built yet — see [`ARCHITECTURE.md`](./ARCHITECTURE.md)
-for the phased plan and the schema/auth decisions made now so those phases
-don't require a rebuild.
+The nightlife super-app: Phase 1 (crowdsourced, geofence-verified live wait
+times and crowd levels for bars, clubs, and restaurants) and Phase 2
+(Fast Pass, a paid skip-the-line subscription) are built. Here Now (Phase 3)
+is not — see [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the phased plan and
+the schema/auth decisions made now so it doesn't require a rebuild.
 
 ## Stack
 
@@ -100,8 +100,24 @@ Scan the QR code with Expo Go (or press `i`/`a` for a simulator).
 - Map view (pins colored by crowd level) and list view (sorted by distance)
 - Report submission flow (wait estimate, crowd level, optional note/photo)
 
+## What's implemented in Phase 2 (Fast Pass)
+
+- `Subscription`, `VenuePartnerAgreement`, and `FastPassRedemption` tables
+- Stripe Checkout for the monthly subscription tier, and a webhook handler
+  that keeps `subscriptions` in sync (this needs your own Stripe test-mode
+  keys to actually run — see `apps/api/.env.example`)
+- Fast Pass issuance enforces a venue's nightly cap and blackout dates, and
+  blocks a user from holding two pending passes at the same venue at once
+  — all checked server-side against the database, never trusted from the
+  client
+- No staff app: door verification is a no-login web page reached by
+  scanning the pass's own QR code (`GET/POST /fast-pass/redeem/:token`) —
+  the smallest version of the brief's "lightweight staff view," not a
+  first cut at a real one
+
 ## What's explicitly deferred
 
-See `ARCHITECTURE.md` → "Phase 2 and Phase 3 TODOs" for what's stubbed in
-the schema now (Fast Pass tables, Here Now tables, age/ID verification
-columns) versus what still needs real design work later.
+See `ARCHITECTURE.md` → "Phase 2" and "Phase 3 TODOs" for what's stubbed
+in the schema now (Here Now tables, age/ID verification columns, Stripe
+Connect revenue share, the `credit_pack` subscription tier) versus what
+still needs real design work later.

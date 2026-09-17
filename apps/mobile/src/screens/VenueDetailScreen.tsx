@@ -44,7 +44,16 @@ export function VenueDetailScreen({ route, navigation }: Props) {
       )}
 
       {venue.coverChargeInfo && <Text style={styles.meta}>{venue.coverChargeInfo}</Text>}
-      {venue.isFastPassPartner && <Text style={styles.fastPass}>Fast Pass available at this venue</Text>}
+
+      {venue.isFastPassPartner && (
+        <View style={styles.fastPassSection}>
+          <Text style={styles.fastPass}>Fast Pass available at this venue</Text>
+          <Button
+            title="Use Fast Pass"
+            onPress={() => navigation.navigate('FastPassPass', { venueId, venueName: venue.name })}
+          />
+        </View>
+      )}
 
       <View style={styles.reportButton}>
         <Button
@@ -71,5 +80,6 @@ const styles = StyleSheet.create({
   wait: { fontSize: 15, fontWeight: '500' },
   meta: { fontSize: 13, color: '#6E6E73', marginTop: 4 },
   fastPass: { fontSize: 13, color: '#5856D6', marginTop: 8, fontWeight: '500' },
+  fastPassSection: { marginTop: 16 },
   reportButton: { marginTop: 24 },
 });

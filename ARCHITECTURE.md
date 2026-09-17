@@ -66,22 +66,60 @@ Revisit if custom map styling or offline tiles become a requirement.
   enforce yet but Phase 3 will need (see below), so no destructive migration
   is needed to add them later.
 
-### Phase 2 TODOs (Fast Pass) — tables stubbed, commented out in
-`supabase/migrations/0002_phase2_fastpass_stub.sql`
+### Phase 2 (Fast Pass) — built in `supabase/migrations/0002_phase2_fastpass.sql`
 
-- `subscriptions` (user_id, tier, status, stripe_subscription_id,
-  renewal_date, passes_remaining)
-- `fast_pass_redemptions` (id, user_id, venue_id, qr_token, redeemed,
-  redeemed_by_staff_id, created_at)
-- `venue_partner_agreements` (venue_id, nightly_pass_cap, blackout_rules
-  jsonb, revenue_share_terms jsonb)
-- Open business decision (flagged in brief, not an engineering one): whether
-  venues get a Stripe Connect revenue share or Fast Pass is a pure
-  user-paid perk. This changes whether `venue_partner_agreements` needs a
-  `stripe_connect_account_id` column — deferred until that's decided.
-- Staff-side redemption view: brief says a full staff app isn't needed at
-  small scale (photo ID check + timestamp is enough). When it is needed,
-  it's a thin web view reading `fast_pass_redemptions`, not a native app.
+- `subscriptions` — user_id, tier (`monthly` | `credit_pack`), status,
+  `stripe_customer_id`, `stripe_subscription_id`, renewal_date,
+  passes_remaining.
+- `venue_partner_agreements` — venue_id, nightly_pass_cap, blackout_rules
+  jsonb, cover_charge_waived.
+- `fast_pass_redemptions` — id, user_id, venue_id, subscription_id,
+  qr_token, redeemed, redeemed_at, created_at.
+- `fast_pass_nightly_count(venue_id)` and `redeem_fast_pass(qr_token)` —
+  the enforcement and redemption logic, as Postgres functions rather than
+  API-layer-only logic, so the invariants hold even if called from
+  somewhere other than `apps/api` later.
+
+**The two business decisions the earlier stub left open, now resolved for
+MVP** (both are cheap to revisit later — neither required a schema
+rewrite of anything else):
+
+1. **No Stripe Connect / venue revenue share.** Fast Pass is a pure
+   user-paid subscription with no venue payout for MVP. This is the
+   faster-to-ship option — no Connect onboarding, no legal revenue-share
+   agreements to negotiate before the first partner venue can go live.
+   `venue_partner_agreements` has no `stripe_connect_account_id` column;
+   adding revenue share later is a new migration, not a rewrite of this
+   one. This is still fundamentally a business call, not just an
+   engineering shortcut — flagging it so it gets revisited deliberately,
+   not by default.
+2. **No staff-facing app.** Per the brief's own MVP scope, door
+   verification is a human glancing at the pass screen (timestamp +
+   photo ID). The only backend concession to this is a no-login "confirm
+   redemption" page apps/api serves at the URL encoded in the QR code
+   itself (`GET /fast-pass/redeem/:token`) — scanning it with any camera
+   app shows pass validity and a one-tap confirm button. This is the
+   smallest possible version of the brief's "lightweight web view," not
+   a first cut at a real staff app; it has no login, no capacity
+   dashboard, and no multi-venue staff accounts.
+
+**Anti-abuse, decided at issuance time, not redemption time:**
+- At most one *unredeemed* pass per user per venue at once (DB unique
+  index) — requesting a second pass while the first is still pending is
+  blocked; requesting a second pass *after* the first was redeemed is
+  allowed (a legitimate second trip back to the same venue same night).
+- A venue's `nightly_pass_cap` is enforced against passes issued in a
+  trailing 12-hour window, not a calendar-date split. This is deliberate:
+  a calendar-date split would incorrectly treat a venue's one real night
+  (say, 9pm–3am) as spanning two different "nights" at the midnight
+  boundary. Fully timezone- and venue-hours-aware "tonight" is real
+  future work, not an MVP blocker — flagged here so it isn't mistaken for
+  an oversight.
+
+**Not built in Phase 2**, staying deliberately out of MVP scope per the
+brief: the `credit_pack` subscription tier's purchase flow (schema
+supports it; only `monthly`'s recurring Stripe Checkout is wired up),
+and anything Stripe-Connect-shaped.
 
 ### Phase 3 TODOs (Here Now) — tables stubbed, commented out in
 `supabase/migrations/0003_phase3_here_now_stub.sql`
@@ -172,12 +210,25 @@ This scaffold has been run against real infrastructure, not just compiled:
   documented pattern for monorepos) instead of relying on the default
   entry. Confirmed fixed by actually running `expo export` and getting a
   bundle (795 modules resolved) instead of a `ConfigError`.
+- Phase 2's schema and business logic were verified the same way against
+  real data: nightly-cap counting (`fast_pass_nightly_count`), the
+  one-pending-pass-per-user-per-venue anti-abuse constraint (confirmed it
+  actually rejects a duplicate and actually allows a different user), the
+  `blackout_rules` jsonb shape read back exactly as the API's TypeScript
+  expects it, and `redeem_fast_pass`'s idempotency (a second scan of an
+  already-redeemed pass correctly reports `already_redeemed: true` with
+  the original timestamp, not a new one). The mobile bundle was
+  re-exported with the new Fast Pass screens and QR code library wired in
+  (1070 modules resolved, up from 795).
 
 What's still *not* verified, because it requires infrastructure only the
 project owner can provision (see "Open questions" below): a real Supabase
 project (this sandbox has no Docker, so `supabase start`'s full stack --
 PostgREST + GoTrue + Realtime together -- was never run; only the
-underlying Postgres+PostGIS layer was), and the app running on an actual
+underlying Postgres+PostGIS layer was), a real Stripe account (Checkout
+session creation and the webhook handler are written correctly against
+Stripe's documented API but have never actually talked to Stripe -- that
+needs your own test-mode API keys), and the app running on an actual
 device or simulator.
 
 ## Open questions for the product owner
