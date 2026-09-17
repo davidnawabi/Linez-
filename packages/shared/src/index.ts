@@ -55,3 +55,35 @@ export interface SubmitReportInput {
 }
 
 export const GEOFENCE_RADIUS_METERS = 152; // ~500 ft
+
+// --- Phase 2: Fast Pass ---
+
+export type SubscriptionTier = 'monthly' | 'credit_pack';
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled';
+
+export interface Subscription {
+  id: string;
+  tier: SubscriptionTier;
+  status: SubscriptionStatus;
+  renewalDate: string | null;
+  passesRemaining: number;
+}
+
+export interface FastPassRedemption {
+  id: string;
+  venueId: string;
+  venueName: string;
+  qrToken: string;
+  /** The URL to encode in the QR code -- opening it (any camera app) shows
+   * door staff the pass's validity. Redemption itself only happens when
+   * they tap "Confirm" on that page, not on page load. */
+  redeemUrl: string;
+  redeemed: boolean;
+  createdAt: string;
+}
+
+/** Number of passes a `monthly` subscription grants per billing period.
+ * A product/business decision, not a technical constant -- kept in one
+ * place (here) so apps/api's webhook handler and any future pricing page
+ * agree on it without duplicating the number. */
+export const MONTHLY_FAST_PASS_ALLOTMENT = 4;
