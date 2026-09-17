@@ -2,7 +2,7 @@
   "name": "@linez/mobile",
   "version": "0.1.0",
   "private": true,
-  "main": "node_modules/expo/AppEntry.js",
+  "main": "index.ts",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -28,10 +28,10 @@
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@types/react": "~18.2.79",
-    "babel-preset-expo": "~11.0.0",
-    "eslint": "^8.57.0",
     "@typescript-eslint/eslint-plugin": "^7.16.1",
     "@typescript-eslint/parser": "^7.16.1",
-    "typescript": "^5.5.4"
+    "babel-preset-expo": "~11.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "~5.3.3"
   }
 }
