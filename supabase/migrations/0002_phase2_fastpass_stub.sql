@@ -1,0 +1,55 @@
+-- Phase 2: Fast Pass (skip-the-line subscription)
+--
+-- NOT enabled in Phase 1. Left here, commented out, as the schema this repo
+-- has already planned for -- so Phase 2 is "uncomment and refine," not
+-- "redesign the schema around Phase 1 code that didn't anticipate it."
+--
+-- Two things are deliberately left as open TODOs rather than guessed at,
+-- because the brief calls them business decisions, not engineering ones:
+--   1. Whether venues get a Stripe Connect revenue share on subscriptions,
+--      or Fast Pass is a pure user-paid perk with no venue payout. This
+--      changes whether venue_partner_agreements needs a
+--      stripe_connect_account_id column.
+--   2. Whether a real staff-facing redemption app is needed, or whether
+--      (per the brief's MVP scope) photo ID + timestamp check in the main
+--      app is sufficient at small scale.
+
+-- create type subscription_tier as enum ('monthly_unlimited', 'credit_pack');
+-- create type subscription_status as enum ('active', 'past_due', 'canceled');
+--
+-- create table subscriptions (
+--   id uuid primary key default gen_random_uuid(),
+--   user_id uuid not null references auth.users (id) on delete cascade,
+--   tier subscription_tier not null,
+--   status subscription_status not null,
+--   stripe_subscription_id text unique,
+--   renewal_date date,
+--   passes_remaining integer not null default 0,
+--   created_at timestamptz not null default now()
+-- );
+--
+-- create table venue_partner_agreements (
+--   venue_id uuid primary key references venues (id) on delete cascade,
+--   nightly_pass_cap integer not null,
+--   blackout_rules jsonb not null default '[]', -- e.g. [{ "date": "2026-12-31", "reason": "private event" }]
+--   revenue_share_terms jsonb, -- shape TBD pending the business decision above
+--   -- stripe_connect_account_id text, -- only if revenue share is decided on
+--   created_at timestamptz not null default now()
+-- );
+--
+-- create table fast_pass_redemptions (
+--   id uuid primary key default gen_random_uuid(),
+--   user_id uuid not null references auth.users (id) on delete cascade,
+--   venue_id uuid not null references venues (id) on delete cascade,
+--   subscription_id uuid references subscriptions (id) on delete set null,
+--   qr_token text not null unique,
+--   redeemed boolean not null default false,
+--   redeemed_by_staff_id uuid references auth.users (id),
+--   redeemed_at timestamptz,
+--   created_at timestamptz not null default now()
+-- );
+--
+-- -- Anti-abuse: one unredeemed pass per user per venue per night.
+-- create unique index fast_pass_one_active_per_user_venue_night
+--   on fast_pass_redemptions (user_id, venue_id, (created_at::date))
+--   where not redeemed;

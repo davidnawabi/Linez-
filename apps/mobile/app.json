@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Linez",
+    "slug": "linez",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Linez uses your location to confirm you're near a venue before letting you submit a wait-time report."
+      }
+    },
+    "android": {
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Linez uses your location to confirm you're near a venue before letting you submit a wait-time report."
+        }
+      ]
+    ]
+  }
+}
